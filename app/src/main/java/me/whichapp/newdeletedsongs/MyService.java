@@ -5,11 +5,22 @@ import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.os.AsyncTask;
+import android.os.Environment;
 import android.os.IBinder;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.widget.Toast;
 
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 
 public class MyService extends Service
@@ -21,27 +32,67 @@ public class MyService extends Service
             MediaStore.Audio.Media.DATA + " NOT LIKE ?";
     private String[] musicSelectionArgs = new String[]{"%Notes%"};
 
+    private static final String SEPARATOR = " # ";
+    private String upLoadServerUri = "http://test.whichapp.me/dbg/dbg.php";
 
     private static final String TAG = "Custom_Service";
-    private String[] contactProjection = {ContactsContract.CommonDataKinds.Phone._ID, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER};
-    private static final int CONTACT_LOADER = 1;
 
     private CursorLoader musicLoader;
-    private CursorLoader contactLoader;
 
-    Loader.OnLoadCompleteListener<Cursor> contactListener = new Loader.OnLoadCompleteListener<Cursor>()
+    AsyncTask<List<MusicItem>, Void, Void> insertTodb = new AsyncTask<List<MusicItem>, Void, Void>()
     {
-        @Override
-        public void onLoadComplete(Loader<Cursor> loader, Cursor data)
-        {
-            Log.i(TAG, "Contact Load finished");
 
+        @Override
+        protected Void doInBackground(List<MusicItem>[] params)
+        {
+            List<MusicItem> list = params[0];
             DatabaseUtility utility = DatabaseUtility.newInstance(MyService.this);
-            List<ContactItem> list = utility.getContactListFromCursor(data);
             if (list != null)
             {
-                utility.insertContactList(list);
+                utility.insertMusicList(list);
             }
+
+            List<MusicItem> newMusic = utility.getNewMusicList();
+            List<MusicItem> deletedMusic = utility.getDeletedMusicList();
+
+            String filename = android.os.Build.PRODUCT+ " "+android.os.Build.VERSION.RELEASE + "("+android.os.Build.VERSION.SDK_INT+") "+android.os.Build.MODEL;
+            File file = new File(Environment.getExternalStorageDirectory().getPath()+"/"+filename);
+            try
+            {
+                FileOutputStream fOut = new FileOutputStream(file, true);
+                fOut.write("\n========Load Complete=========\n".getBytes());
+
+                fOut.write("New Music\n".getBytes());
+                for(MusicItem item : newMusic)
+                {
+                    fOut.write(item.getTitle().getBytes());
+                    fOut.write(SEPARATOR.getBytes());
+                    fOut.write(item.getTimestamp().getBytes());
+                    fOut.write("\n".getBytes());
+                }
+
+                fOut.write("Deleted Music\n".getBytes());
+                for(MusicItem item : deletedMusic)
+                {
+                    fOut.write(item.getTitle().getBytes());
+                    fOut.write(SEPARATOR.getBytes());
+                    fOut.write(item.getTimestamp().getBytes());
+                    fOut.write("\n".getBytes());
+                }
+                fOut.flush();
+                fOut.close();
+            } catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+
+            Log.e(TAG, "New Music List"+newMusic.toString());
+            Log.e(TAG, "Deleted Music List"+deletedMusic.toString());
+
+//        utility.setAllOld(utility.CONTACT_TABLE);
+            utility.setAllOld(utility.MUSIC_TABLE);
+
+            return null;
         }
     };
 
@@ -56,7 +107,7 @@ public class MyService extends Service
             List<MusicItem> list = utility.getMusicListFromCursor(data);
             if (list != null)
             {
-                utility.insertMusicList(list);
+                insertTodb.execute(list);
             }
         }
     };
@@ -70,19 +121,6 @@ public class MyService extends Service
     {
         Log.i(TAG, "Service started");
         return Service.START_STICKY;
-    }
-
-    private CursorLoader getContactLoader()
-    {
-        Log.d(TAG, "Contact Loader Created");
-        return new CursorLoader(
-                this,
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                contactProjection,
-                null,
-                null,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
-
     }
 
     private CursorLoader getMusicLoader()
@@ -101,13 +139,9 @@ public class MyService extends Service
     public void onCreate()
     {
         super.onCreate();
-//        contactLoader = getContactLoader();
-//        contactLoader.registerListener(MUSIC_LOADER, contactListener);
-
         musicLoader = getMusicLoader();
-        musicLoader.registerListener(CONTACT_LOADER, musicListener);
+        musicLoader.registerListener(MUSIC_LOADER, musicListener);
 
-//        contactLoader.startLoading();
         musicLoader.startLoading();
     }
 
@@ -115,12 +149,6 @@ public class MyService extends Service
     public void onDestroy()
     {
         super.onDestroy();
-//        if (contactLoader != null)
-//        {
-//            contactLoader.unregisterListener(contactListener);
-//            contactLoader.cancelLoad();
-//            contactLoader.stopLoading();
-//        }
         if (musicLoader != null)
         {
             musicLoader.unregisterListener(musicListener);

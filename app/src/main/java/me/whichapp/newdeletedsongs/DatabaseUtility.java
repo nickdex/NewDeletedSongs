@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by Dexter on 06-Apr-16.
@@ -114,19 +115,48 @@ public class DatabaseUtility extends SQLiteOpenHelper
                 }
             } else
             {
-                List<MusicItem> updatedList = getUpdatedMusicItemList(getMusicListFromDatabaseCursorToInsert(cursor), fresh);
-                if (updatedList != null)
+                String itemString = getSQLNotInListAsString(fresh);
+
+                //Gives Deleted Items
+                cursor = db.query(MUSIC_TABLE, new String[]{ID, TITLE, PATH, IS_NEW}, ID+ " NOT IN "+itemString, null, null, null, null);
+
+                List<MusicItem> deletedItems = getMusicListFromDatabaseCursorToInsert(cursor);
+
+                if (deletedItems != null)
                 {
-                    for (MusicItem item : updatedList)
+                    for (MusicItem item : deletedItems)
                     {
+                        item.setInfo(DELETED);
                         insertMusicItem(item, db);
                     }
+                }
+                else
+                {
+                    Log.e(TAG, "No Deleted Items");
                 }
             }
         }
 
         db.close();
     }
+
+    public String getSQLNotInListAsString(List<MusicItem> list)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("(");
+        for(MusicItem item : list)
+        {
+            builder.append("'");
+            builder.append(item.getId());
+            builder.append("'");
+            builder.append(",");
+        }
+        builder.delete(builder.length()-1, builder.length());
+        builder.append(")");
+
+        return builder.toString();
+    }
+
 
     public List<ContactItem> getDeletedContactList()
     {
