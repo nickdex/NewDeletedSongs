@@ -56,7 +56,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
     public void onCreate(SQLiteDatabase db)
     {
         db.execSQL("CREATE TABLE IF NOT EXISTS " + MUSIC_TABLE + " ( " + ID + " TEXT PRIMARY KEY, " + TITLE + " TEXT, " + PATH + " TEXT, " + TIMESTAMP + " TEXT, " + IS_NEW + " INTEGER);");
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + CONTACT_TABLE + " ( " + ID + " TEXT PRIMARY KEY, " + TITLE + " TEXT, " + NUMBER + " TEXT, " + TIMESTAMP + " TEXT, " + IS_NEW + " INTEGER);");
         Log.v(TAG, "Database is created");
     }
 
@@ -64,38 +63,7 @@ public class DatabaseUtility extends SQLiteOpenHelper
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion)
     {
         db.execSQL("DROP TABLE IF EXISTS " + MUSIC_TABLE);
-        db.execSQL("DROP TABLE IF EXISTS " + CONTACT_TABLE);
         onCreate(db);
-    }
-
-    public void insertContactList(List<ContactItem> fresh)
-    {
-        SQLiteDatabase db = getWritableDatabase();
-        Cursor cursor = db.query(CONTACT_TABLE, new String[]{ID, TITLE, NUMBER, IS_NEW}, null, null, null, null, null);
-
-        if (cursor != null)
-        {
-            if (cursor.getCount() == 0)
-            {
-                for (ContactItem item : fresh)
-                {
-                    item.setInfo(NEW);
-                    insertContactItem(item, db);
-                }
-            } else
-            {
-                List<ContactItem> updatedList = getUpdatedContactItemList(getContactListFromDatabaseCursorToInsert(cursor), fresh);
-                if (updatedList != null)
-                {
-                    for (ContactItem item : updatedList)
-                    {
-                        insertContactItem(item, db);
-                    }
-                }
-            }
-        }
-
-        db.close();
     }
 
 
@@ -115,6 +83,11 @@ public class DatabaseUtility extends SQLiteOpenHelper
                 }
             } else
             {
+                for (MusicItem item : fresh)
+                {
+                    insertMusicItem(item, db);
+                }
+
                 String itemString = getSQLNotInListAsString(fresh);
 
                 //Gives Deleted Items
@@ -127,12 +100,12 @@ public class DatabaseUtility extends SQLiteOpenHelper
                     for (MusicItem item : deletedItems)
                     {
                         item.setInfo(DELETED);
-                        insertMusicItem(item, db);
+                        insertDeletedMusicItem(item, db);
                     }
                 }
                 else
                 {
-                    Log.e(TAG, "No Deleted Items");
+                    Log.i(TAG, "No Deleted Items");
                 }
             }
         }
@@ -157,20 +130,9 @@ public class DatabaseUtility extends SQLiteOpenHelper
         return builder.toString();
     }
 
-
-    public List<ContactItem> getDeletedContactList()
-    {
-        return getSpecialisedContactList(DELETED);
-    }
-
     public List<MusicItem> getDeletedMusicList()
     {
         return getSpecialisedMusicList(DELETED);
-    }
-
-    public List<ContactItem> getNewContactList()
-    {
-        return getSpecialisedContactList(NEW);
     }
 
     public List<MusicItem> getNewMusicList()
@@ -178,33 +140,11 @@ public class DatabaseUtility extends SQLiteOpenHelper
         return getSpecialisedMusicList(NEW);
     }
 
-
-    private List<ContactItem> getSpecialisedContactList(int info_type)
-    {
-        SQLiteDatabase db = getReadableDatabase();
-        List<ContactItem> list = new ArrayList<>();
-        Cursor cursor = db.query(CONTACT_TABLE, null, IS_NEW + " = " + info_type, null, null, null, TITLE);
-        while(cursor.moveToNext())
-        {
-            String id = cursor.getString(cursor.getColumnIndex(ID));
-            String title = cursor.getString(cursor.getColumnIndex(TITLE));
-            String number = cursor.getString(cursor.getColumnIndex(NUMBER));
-            String timestamp = cursor.getString(cursor.getColumnIndex(TIMESTAMP));
-            int info = cursor.getInt(cursor.getColumnIndex(IS_NEW));
-
-            ContactItem item = new ContactItem(id, title, number, timestamp, info);
-            list.add(item);
-        }
-        cursor.close();
-        db.close();
-        return list;
-    }
-
     private List<MusicItem> getSpecialisedMusicList(int info_type)
     {
         SQLiteDatabase db = getReadableDatabase();
         List<MusicItem> list = new ArrayList<>();
-        Cursor cursor = db.query(MUSIC_TABLE, null, IS_NEW + " = " + info_type, null, null, null, TITLE);
+        Cursor cursor = db.query(MUSIC_TABLE, null, IS_NEW + " = ?",new String[]{String.valueOf(info_type)}, null, null, TITLE);
         while(cursor.moveToNext())
         {
             String id = cursor.getString(cursor.getColumnIndex(ID));
@@ -221,21 +161,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
         return list;
     }
 
-    public List<ContactItem> getContactItemListFromDatabase()
-    {
-        SQLiteDatabase db = getWritableDatabase();
-        Cursor cursor;
-        cursor = db.query(CONTACT_TABLE, new String[]{ID, TITLE, NUMBER, IS_NEW}, null, null, null, null, null);
-
-        if (cursor != null)
-        {
-            return getSortedContactList(getContactListFromDatabaseCursorToShow(cursor, db, CONTACT_TABLE));
-        }
-
-        db.close();
-        return null;
-    }
-
 
     public List<MusicItem> getMusicItemListFromDatabase()
     {
@@ -250,23 +175,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
 
         db.close();
         return null;
-    }
-
-    private List<ContactItem> getSortedContactList(List<ContactItem> list)
-    {
-        List<ContactItem> tempList = new ArrayList<>();
-        for (ContactItem item : list)
-        {
-            if (item.getInfo() == OLD)
-            {
-                tempList.add(item);
-            }
-        }
-
-        list.removeAll(tempList);
-        list.addAll(tempList);
-
-        return list;
     }
 
     private List<MusicItem> getSortedMusicList(List<MusicItem> list)
@@ -286,13 +194,8 @@ public class DatabaseUtility extends SQLiteOpenHelper
         return list;
     }
 
-    /**
-     * Heart of logic
-     *
-     * @param old
-     * @param fresh
-     * @return
-     */
+
+
     private List<MusicItem> getUpdatedMusicItemList(List<MusicItem> old, List<MusicItem> fresh)
     {
         List<MusicItem> oldItems = new ArrayList<>();
@@ -364,99 +267,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
         return null;
     }
 
-    private List<ContactItem> getUpdatedContactItemList(List<ContactItem> old, List<ContactItem> fresh)
-    {
-        List<ContactItem> oldItems = new ArrayList<>();
-        List<ContactItem> changedItems = new ArrayList<>();
-
-        //New Item or Changed
-        if (fresh.size() >= old.size())
-        {
-            for (ContactItem itemFresh : fresh)
-            {
-                for (ContactItem itemOld : old)
-                {
-                    if (itemFresh.getId().equals(itemOld.getId()))
-                    {
-                        if (itemFresh.getContent().equals(itemOld.getContent()))
-                        {
-                            oldItems.add(itemFresh);
-                        } else
-                        {
-                            changedItems.add(itemFresh);
-                        }
-                        break;
-                    }
-                }
-            }
-
-            fresh.removeAll(oldItems);
-            fresh.removeAll(changedItems);
-
-            for (ContactItem item : fresh)
-            {
-                item.setInfo(NEW);
-            }
-            for (ContactItem item : changedItems)
-            {
-                item.setInfo(CHANGED);
-            }
-
-            fresh.addAll(changedItems);
-
-            return fresh;
-        }
-        //Deleted Item
-        else if (fresh.size() < old.size())
-        {
-            for (ContactItem itemOld : old)
-            {
-                for (ContactItem itemFresh : fresh)
-                {
-                    if (itemFresh.getId().equals(itemOld.getId()))
-                    {
-                        oldItems.add(itemOld);
-                        break;
-                    }
-                }
-            }
-
-            old.removeAll(oldItems);
-
-            for (ContactItem item : old)
-            {
-                item.setInfo(DELETED);
-            }
-
-            return old;
-        }
-
-        return null;
-    }
-
-
-    private List<ContactItem> getContactListFromDatabaseCursorToInsert(Cursor cursor)
-    {
-        if (cursor != null && cursor.getCount() > 0)
-        {
-            List<ContactItem> list = new ArrayList<>();
-            while (cursor.moveToNext())
-            {
-                String id = cursor.getString(0);
-                String title = cursor.getString(1);
-                String number = cursor.getString(2);
-                int info = cursor.getInt(3);
-                ContactItem item = new ContactItem(id, title, number, info);
-                list.add(item);
-            }
-
-            return list;
-        } else
-        {
-            return null;
-        }
-    }
-
     private List<MusicItem> getMusicListFromDatabaseCursorToInsert(Cursor cursor)
     {
         if (cursor != null && cursor.getCount() > 0)
@@ -479,32 +289,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
         }
     }
 
-    private List<ContactItem> getContactListFromDatabaseCursorToShow(Cursor cursor, SQLiteDatabase db, String table)
-    {
-        if (cursor != null && cursor.getCount() > 0)
-        {
-            List<ContactItem> list = new ArrayList<>();
-            while (cursor.moveToNext())
-            {
-                String id = cursor.getString(0);
-                String title = cursor.getString(1);
-                String number = cursor.getString(2);
-                int info = cursor.getInt(3);
-                ContactItem item = new ContactItem(id, title, number, info);
-                list.add(item);
-
-                if (info == DELETED)
-                {
-                    db.delete(table, IS_NEW + " = ?", new String[]{String.valueOf(info)});
-                }
-            }
-
-            return list;
-        } else
-        {
-            return null;
-        }
-    }
 
     private List<MusicItem> getMusicListFromDatabaseCursorToShow(Cursor cursor, SQLiteDatabase db, String table)
     {
@@ -533,45 +317,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
         }
     }
 
-    /**
-     * Converts Cursor to equivalent List of ContactItem
-     * @param cursor
-     * @return List containing ContactItem
-     */
-
-    public List<ContactItem> getContactListFromCursor(Cursor cursor)
-    {
-        if (cursor != null && cursor.getCount() > 0)
-        {
-            List<ContactItem> list = new ArrayList<>();
-            while (cursor.moveToNext())
-            {
-
-                String id = cursor.getString(0);
-                String title = cursor.getString(1);
-                String number = cursor.getString(2);
-                //OLD doesn't matter it will be replaced later when interacting with database
-                ContactItem item = new ContactItem(id, title, number, OLD);
-                list.add(item);
-            }
-
-            if (!list.isEmpty())
-            {
-                return list;
-            }
-
-            cursor.close();
-        }
-
-        return null;
-
-    }
-
-    /**
-     * Converts Cursor to equivalent List of ContactItem
-     * @param cursor
-     * @return List containing ContactItem
-     */
 
     public List<MusicItem> getMusicListFromCursor(Cursor cursor)
     {
@@ -585,7 +330,7 @@ public class DatabaseUtility extends SQLiteOpenHelper
                 String title = cursor.getString(1);
                 String path = cursor.getString(2);
                 //OLD doesn't matter it will be replaced later when interacting with database
-                MusicItem item = new MusicItem(id, title, path, OLD);
+                MusicItem item = new MusicItem(id, title, path, NEW);
                 list.add(item);
             }
 
@@ -601,25 +346,6 @@ public class DatabaseUtility extends SQLiteOpenHelper
 
     }
 
-    private void insertContactItem(ContactItem item, SQLiteDatabase database)
-    {
-
-        ContentValues values = new ContentValues();
-        values.put(ID, item.getId());
-        values.put(TITLE, item.getContent());
-        values.put(NUMBER, item.getNumber());
-        values.put(IS_NEW, item.getInfo());
-        SimpleDateFormat currentDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.ENGLISH);
-        values.put(TIMESTAMP, currentDate.format(new Date()));
-        try
-        {
-            database.insertOrThrow(CONTACT_TABLE, null, values);
-        } catch (SQLiteConstraintException e)
-        {
-            database.updateWithOnConflict(CONTACT_TABLE, values, ID + " = ?", new String[]{item.getId()}, SQLiteDatabase.CONFLICT_REPLACE);
-        }
-        Log.v(TAG, item.toString());
-    }
 
     private void insertMusicItem(MusicItem item, SQLiteDatabase database)
     {
@@ -628,16 +354,34 @@ public class DatabaseUtility extends SQLiteOpenHelper
         values.put(ID, item.getId());
         values.put(TITLE, item.getTitle());
         values.put(PATH, item.getPath());
-        values.put(IS_NEW, item.getInfo());
         SimpleDateFormat currentDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.ENGLISH);
         values.put(TIMESTAMP, currentDate.format(new Date()));
+        values.put(IS_NEW, item.getInfo());
         try
         {
             database.insertOrThrow(MUSIC_TABLE, null, values);
         } catch (SQLiteConstraintException e)
         {
+            values.remove(IS_NEW);
+            values.put(IS_NEW, OLD);
             database.updateWithOnConflict(MUSIC_TABLE, values, ID + " = ?", new String[]{item.getId()}, SQLiteDatabase.CONFLICT_REPLACE);
         }
+        Log.v(TAG, item.toString());
+    }
+
+    private void insertDeletedMusicItem(MusicItem item, SQLiteDatabase database)
+    {
+
+        ContentValues values = new ContentValues();
+        values.put(ID, item.getId());
+        values.put(TITLE, item.getTitle());
+        values.put(PATH, item.getPath());
+        SimpleDateFormat currentDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.ENGLISH);
+        values.put(TIMESTAMP, currentDate.format(new Date()));
+        values.put(IS_NEW, item.getInfo());
+
+        database.updateWithOnConflict(MUSIC_TABLE, values, ID + " = ?", new String[]{item.getId()}, SQLiteDatabase.CONFLICT_REPLACE);
+
         Log.v(TAG, item.toString());
     }
 
@@ -646,6 +390,13 @@ public class DatabaseUtility extends SQLiteOpenHelper
         SQLiteDatabase db = getWritableDatabase();
         db.execSQL("UPDATE " + table + " SET " + IS_NEW + " = " + OLD);
 
+        db.close();
+    }
+
+    public void deleteItems()
+    {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(MUSIC_TABLE, IS_NEW + " = ? ", new String[]{String.valueOf(DELETED)});
         db.close();
     }
 }

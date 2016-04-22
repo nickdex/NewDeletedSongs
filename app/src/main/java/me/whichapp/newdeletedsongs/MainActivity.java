@@ -47,8 +47,6 @@ public class MainActivity extends AppCompatActivity
         DatabaseUtility utility = DatabaseUtility.newInstance(this);
         List<MusicItem> newMusic = utility.getNewMusicList();
         List<MusicItem> deletedMusic = utility.getDeletedMusicList();
-        List<ContactItem> newContacts = utility.getNewContactList();
-        List<ContactItem> deletedContact = utility.getDeletedContactList();
 
         String filename = android.os.Build.PRODUCT+ " "+android.os.Build.VERSION.RELEASE + "("+android.os.Build.VERSION.SDK_INT+") "+android.os.Build.MODEL;
         File file = new File(Environment.getExternalStorageDirectory().getPath()+"/"+filename);
@@ -81,8 +79,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         Log.e(TAG, "New Music List"+newMusic.toString());
-        Log.e(TAG, "New Contact List"+newContacts.toString());
-        Log.e(TAG, "Deleted Contact List"+deletedContact.toString());
         Log.e(TAG, "Deleted Music List"+deletedMusic.toString());
 
 //        utility.setAllOld(utility.CONTACT_TABLE);

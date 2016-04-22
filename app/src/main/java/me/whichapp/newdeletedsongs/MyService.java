@@ -39,7 +39,7 @@ public class MyService extends Service
 
     private CursorLoader musicLoader;
 
-    AsyncTask<List<MusicItem>, Void, Void> insertTodb = new AsyncTask<List<MusicItem>, Void, Void>()
+    class DbAndFileTask extends AsyncTask<List<MusicItem>, Void, Void>
     {
 
         @Override
@@ -89,7 +89,7 @@ public class MyService extends Service
             Log.e(TAG, "New Music List"+newMusic.toString());
             Log.e(TAG, "Deleted Music List"+deletedMusic.toString());
 
-//        utility.setAllOld(utility.CONTACT_TABLE);
+            utility.deleteItems();
             utility.setAllOld(utility.MUSIC_TABLE);
 
             return null;
@@ -107,7 +107,7 @@ public class MyService extends Service
             List<MusicItem> list = utility.getMusicListFromCursor(data);
             if (list != null)
             {
-                insertTodb.execute(list);
+               new DbAndFileTask().execute(list);
             }
         }
     };
