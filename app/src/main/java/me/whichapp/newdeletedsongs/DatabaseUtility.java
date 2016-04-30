@@ -91,7 +91,7 @@ public class DatabaseUtility extends SQLiteOpenHelper
                 String itemString = getSQLNotInListAsString(fresh);
 
                 //Gives Deleted Items
-                cursor = db.query(MUSIC_TABLE, new String[]{ID, TITLE, PATH, IS_NEW}, ID+ " NOT IN "+itemString, null, null, null, null);
+                cursor = db.query(MUSIC_TABLE, new String[]{ID, TITLE, PATH, IS_NEW}, PATH+ " NOT IN "+itemString, null, null, null, null);
 
                 List<MusicItem> deletedItems = getMusicListFromDatabaseCursorToInsert(cursor);
 
@@ -119,9 +119,9 @@ public class DatabaseUtility extends SQLiteOpenHelper
         builder.append("(");
         for(MusicItem item : list)
         {
-            builder.append("'");
-            builder.append(item.getId());
-            builder.append("'");
+            builder.append("\"");
+            builder.append(item.getPath());
+            builder.append("\"");
             builder.append(",");
         }
         builder.delete(builder.length()-1, builder.length());
@@ -362,9 +362,9 @@ public class DatabaseUtility extends SQLiteOpenHelper
             database.insertOrThrow(MUSIC_TABLE, null, values);
         } catch (SQLiteConstraintException e)
         {
-            values.remove(IS_NEW);
-            values.put(IS_NEW, OLD);
-            database.updateWithOnConflict(MUSIC_TABLE, values, ID + " = ?", new String[]{item.getId()}, SQLiteDatabase.CONFLICT_REPLACE);
+            ContentValues updateValues = new ContentValues();
+            updateValues.put(IS_NEW, OLD);
+            database.updateWithOnConflict(MUSIC_TABLE, updateValues, ID + " = ?", new String[]{item.getId()}, SQLiteDatabase.CONFLICT_REPLACE);
         }
         Log.v(TAG, item.toString());
     }

@@ -21,7 +21,10 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MyService extends Service
 {
@@ -60,9 +63,13 @@ public class MyService extends Service
             try
             {
                 FileOutputStream fOut = new FileOutputStream(file, true);
-                fOut.write("\n========Load Complete=========\n".getBytes());
+                fOut.write("\n\n========Load Complete=========\n".getBytes());
+                fOut.write("Timestamp : ".getBytes());
+                SimpleDateFormat currentDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.ENGLISH);
+                fOut.write(currentDate.format(new Date()).getBytes() );
+                fOut.write("\n".getBytes());
 
-                fOut.write("New Music\n".getBytes());
+                fOut.write("\n#### New Music ####\n".getBytes());
                 for(MusicItem item : newMusic)
                 {
                     fOut.write(item.getTitle().getBytes());
@@ -71,7 +78,7 @@ public class MyService extends Service
                     fOut.write("\n".getBytes());
                 }
 
-                fOut.write("Deleted Music\n".getBytes());
+                fOut.write("\n#### Deleted Music ####\n".getBytes());
                 for(MusicItem item : deletedMusic)
                 {
                     fOut.write(item.getTitle().getBytes());

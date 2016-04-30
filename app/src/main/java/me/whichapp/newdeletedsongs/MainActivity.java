@@ -2,6 +2,7 @@ package me.whichapp.newdeletedsongs;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
@@ -23,7 +24,10 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 
@@ -32,13 +36,35 @@ public class MainActivity extends AppCompatActivity
 
     private static final String TAG = "MainActivity";
     private static final String SEPARATOR = " # ";
+    private static final String OLD_FILE_DELETE = "file";
     private String upLoadServerUri = "http://test.whichapp.me/dbg/dbg.php";
+
+    String filename = android.os.Build.PRODUCT+ " "+android.os.Build.VERSION.RELEASE + "("+android.os.Build.VERSION.SDK_INT+") "+android.os.Build.MODEL;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        File file = new File(Environment.getExternalStorageDirectory().getPath()+"/"+filename);
+        SharedPreferences pref = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor =  getPreferences(MODE_PRIVATE).edit();
+
+        if(pref.getBoolean(OLD_FILE_DELETE, true) && file.exists())
+        {
+            if( file.delete() )
+            {
+                editor.putBoolean("file", false);
+                Toast.makeText(MainActivity.this, "Old file deleted", Toast.LENGTH_SHORT).show();
+            }
+            else
+            {
+                editor.putBoolean("file", true);
+                Toast.makeText(MainActivity.this, "Old file could not be deleted", Toast.LENGTH_SHORT).show();
+            }
+        }
+        editor.apply();
+
         startService(new Intent(this, MyService.class));
     }
 
@@ -48,13 +74,18 @@ public class MainActivity extends AppCompatActivity
         List<MusicItem> newMusic = utility.getNewMusicList();
         List<MusicItem> deletedMusic = utility.getDeletedMusicList();
 
-        String filename = android.os.Build.PRODUCT+ " "+android.os.Build.VERSION.RELEASE + "("+android.os.Build.VERSION.SDK_INT+") "+android.os.Build.MODEL;
+
         File file = new File(Environment.getExternalStorageDirectory().getPath()+"/"+filename);
         try
         {
             FileOutputStream fOut = new FileOutputStream(file, true);
+            fOut.write("\n\n========Load Complete=========\n".getBytes());
+            fOut.write("Activity - Load Timestamp : ".getBytes());
+            SimpleDateFormat currentDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.ENGLISH);
+            fOut.write(currentDate.format(new Date()).getBytes() );
+            fOut.write("\n".getBytes());
 
-            fOut.write("New Music\n".getBytes());
+            fOut.write("\n#### New Music ####\n".getBytes());
             for(MusicItem item : newMusic)
             {
                 fOut.write(item.getTitle().getBytes());
@@ -63,7 +94,7 @@ public class MainActivity extends AppCompatActivity
                 fOut.write("\n".getBytes());
             }
 
-            fOut.write("Deleted Music\n".getBytes());
+            fOut.write("\n#### Deleted Music ####\n".getBytes());
             for(MusicItem item : deletedMusic)
             {
                 fOut.write(item.getTitle().getBytes());
