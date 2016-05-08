@@ -54,7 +54,6 @@ public class UpdateDbIntentService extends IntentService
                 fOut.write(currentDate.format(new Date()).getBytes() );
                 fOut.write("\n".getBytes());
 
-
                 fOut.write("\n#### New Music ####\n".getBytes());
                 for(MusicItem item : newMusic)
                 {
