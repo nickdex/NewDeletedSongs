@@ -1,10 +1,12 @@
 package me.whichapp.newdeletedsongs;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
  * Created by Dexter on 04-Apr-16.
  */
-public class MusicItem
-{
+public class MusicItem implements Parcelable {
     private String id;
     private String path;
     private String title;
@@ -59,4 +61,39 @@ public class MusicItem
     {
         return timestamp;
     }
+
+    protected MusicItem(Parcel in) {
+    id = in.readString();
+    path = in.readString();
+    title = in.readString();
+    timestamp = in.readString();
+    info = in.readInt();
+    }
+
+    @Override
+    public int describeContents() {
+    return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+    dest.writeString(id);
+    dest.writeString(path);
+    dest.writeString(title);
+    dest.writeString(timestamp);
+    dest.writeInt(info);
+    }
+
+    @SuppressWarnings("unused")
+    public static final Parcelable.Creator<MusicItem> CREATOR = new Parcelable.Creator<MusicItem>() {
+        @Override
+        public MusicItem createFromParcel(Parcel in) {
+            return new MusicItem(in);
+        }
+
+        @Override
+        public MusicItem[] newArray(int size) {
+            return new MusicItem[size];
+        }
+    };
 }

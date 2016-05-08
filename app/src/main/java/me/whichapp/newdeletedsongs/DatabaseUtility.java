@@ -66,6 +66,19 @@ public class DatabaseUtility extends SQLiteOpenHelper
         onCreate(db);
     }
 
+    public long dbItemCount()
+    {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(MUSIC_TABLE, new String[] {String.valueOf(ID)}, null, null, null, null, null);
+        if(cursor != null)
+        {
+            int count = cursor.getCount();
+            cursor.close();
+            return count;
+        }
+        return -1;
+    }
+
 
     public void insertMusicList(List<MusicItem> fresh)
     {
