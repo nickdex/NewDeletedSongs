@@ -63,6 +63,8 @@ public class MyService extends Service
                     systemDb.close();
                     return;
                 }
+            else
+                systemDb.close();
 
             List<MusicItem> list = utility.getMusicListFromCursor(data);
 
